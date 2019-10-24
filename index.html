@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Speech Reco</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recorderjs/0.1.0/recorder.min.js"></script>
+</head>
+<body>
+    <textarea name="text" id="text" cols="30" rows="10"></textarea>
+    <button id="pronounce">Произнести</button>
+    <script>        
+        "use strict"
+        function pronounce(base64stream) {
+            var Sound = (function () {
+                var df = document.createDocumentFragment();
+                return function Sound(src) {
+                    var snd = new Audio(src);
+                    df.appendChild(snd); 
+                    snd.addEventListener('ended', function () {df.removeChild(snd);});
+                    snd.play();
+                    return snd;
+                }
+            }());
+            var snd = Sound("data:audio/mp3;base64," + base64stream);
+            snd.play();
+        }
+        function recognize() {
+            var textarea = document.getElementById('text')
+            var text = textarea.value
+            axios.post('http://localhost:3000/api/v1/text_to_speech', {text: text}).then(function(res) {
+                pronounce(res.data.audio)
+            })
+            .catch(function (error) {
+                console.log(error)
+            })
+        }
+
+        
+        var prBtn = document.getElementById('pronounce')
+        prBtn.addEventListener('click', recognize)
+
+        /*recording*/
+        function startRecording() {
+            recorder.start()
+            .then(() => isRecording = true);
+        }
+ 
+        function stopRecording() {
+            recorder.stop()
+            .then(({blob, buffer}) => {
+                blob = blob;
+            });
+        }
+ 
+        function download() {
+            Recorder.download(blob, 'my-audio-file'); // downloads a .wav file
+        }
+
+
+        window.onload = function init() {
+            window.AudioContext = window.AudioContext 
+                                || window.webkitAudioContext;
+            navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia 
+                                                || navigator.mediaDevices.webkitGetUserMedia;
+            window.URL = window.URL 
+                        || window.webkitURL;
+    
+            var audioContext = new window.AudioContext;
+            var recorder = new Recorder(audioContext, {
+                onAnalysed: function(data){ console.log(data)}
+            });
+            var isRecording = false;
+            var blob = null;
+            console.log(recorder)
+    
+            navigator.mediaDevices.getUserMedia({audio: true})
+                .then(stream => recorder.init(stream))
+                .catch(err => console.log('Uh oh... unable to get stream...', err));
+
+
+            startRecording()
+            timeout = setTimeout(function() {
+                stopRecording()
+                download()
+            }, 5000)
+
+        }
+
+    </script>
+</body>
+</html>
