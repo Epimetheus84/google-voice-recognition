@@ -1,9 +1,9 @@
-import express from 'express'
-import path from 'path'
-import fileUpload from 'express-fileupload'
+const express = require('express')
+const path = require('path')
+const fileUpload = require('express-fileupload')
 
-import textToSpeech from '@google-cloud/text-to-speech'
-import speech from '@google-cloud/speech'
+const textToSpeech = require('@google-cloud/text-to-speech')
+const speech = require('@google-cloud/speech')
 
 const app = express()
 
@@ -16,8 +16,9 @@ const fileUploadConfis = {
 app.use(fileUpload(fileUploadConfis));
 
 const port = 3030
+const defaultLang = 'ru-RU'
 
-const transformTextToSpeech = async (text, lang = 'ru-RU') => {
+const transformTextToSpeech = async (text, lang = defaultLang) => {
   const client = new textToSpeech.TextToSpeechClient();
 
   const voiceConfig = {
@@ -36,10 +37,9 @@ const transformTextToSpeech = async (text, lang = 'ru-RU') => {
   return response.audioContent
 }
 
-const transformSpeechToText = async (buffer, lang = 'ru-RU') => {
+const transformSpeechToText = async (buffer, lang = defaultLang) => {
   const client = new speech.SpeechClient();
 
-  console.log(buffer)
   const audioBytes = buffer.toString('base64');
   
   const audio = {
@@ -47,8 +47,6 @@ const transformSpeechToText = async (buffer, lang = 'ru-RU') => {
   };
 
   const config = {
-    encoding: 'LINEAR16',
-    sampleRateHertz: 16000,
     languageCode: lang,
   };
   
@@ -58,6 +56,7 @@ const transformSpeechToText = async (buffer, lang = 'ru-RU') => {
   };
 
   const [response] = await client.recognize(request)
+  console.log(response)
 
   const transcription = response.results
     .map(result => result.alternatives[0].transcript)
@@ -73,11 +72,11 @@ app.get('/api/v1/', function (req, res) {
 app.post('/api/v1/text_to_speech', async (req, res) => {
   const binary = await transformTextToSpeech(req.body.text)
   const base64res = binary.toString('base64')
-  console.log(base64res)
   res.json({audio: base64res})
 })
 
 app.post('/api/v1/speech_to_text', async (req, res) => {
+  console.log(req.files)
   try {
     if(!req.files) {
       res.json({
@@ -86,11 +85,11 @@ app.post('/api/v1/speech_to_text', async (req, res) => {
       });
     } else {
       const audio = req.files.audio
-      console.log(audio)
-      const transcription = transformSpeechToText(audio.data) 
+      const transcription = await transformSpeechToText(audio.data) 
+      console.log(transcription)
       res.json({
         status: true,
-        text: ''
+        text: transcription
       });
     }
   } catch (err) {

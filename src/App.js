@@ -1,7 +1,7 @@
 import React from 'react'
 import './App.css'
 import axios from 'axios'
-import {RecordRTCPromisesHandler, StereoAudioRecorder} from 'recordrtc'
+import {RecordRTCPromisesHandler, StereoAudioRecorder, invokeSaveAsDialog} from 'recordrtc'
 
 const isEdge = navigator.userAgent.indexOf('Edge') !== -1 && (!!navigator.msSaveOrOpenBlob || !!navigator.msSaveBlob)
 
@@ -10,19 +10,20 @@ class App extends React.Component {
     super()
     this.recorder = false
     this.init = this.init.bind(this)
+    this.stream = false
     this.state = {
       text: ''
     }
   }
 
   async init() {
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-    const recorder = new RecordRTCPromisesHandler(stream, {
+    this.stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    const recorder = new RecordRTCPromisesHandler(this.stream, {
         type: 'audio',
         mimeType: 'audio/wav',
-        recorderType: StereoAudioRecorder, 
-        numberOfAudioChannels: isEdge ? 1 : 2
-    });    
+        recorderType: StereoAudioRecorder,
+        numberOfAudioChannels: 1
+    });
     this.recorder = recorder
   }
 
@@ -40,11 +41,12 @@ class App extends React.Component {
     try {
       await this.recorder.stopRecording();
       let blob = await this.recorder.getBlob();
+      // invokeSaveAsDialog(blob);
       this.transformSpeechToText(blob)
     } catch (err) {
       console.error(err)
       alert ('Voice cannot be recognized')
-    }      
+    }
   }
 
   transformSpeechToText(blob) {
